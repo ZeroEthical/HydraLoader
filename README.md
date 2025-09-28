@@ -7,7 +7,7 @@
   <br>
 </h1>
 
-<h4 align="center">An execution framework built for the modern battlefield, designed to bypass next-gen defenses like AMSI and EDR through deep obfuscation and dynamic behavior.</h4>
+<h4 align="center">The process that refuses to die. A PowerShell loader built on a self-healing persistence engine, designed to survive and thrive even under active incident response.</h4>
 
 <p align="center">
   <a href="https://github.com/ZeroEthical/HydraLoader/blob/main/LICENSE">
