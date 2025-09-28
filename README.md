@@ -204,10 +204,11 @@ This tool is intended for authorized red teaming, security research, and educati
 A special thanks to our friends in the Telegram community for providing the base code that inspired the creation of this project.
 
 -   [@scarlettaowner](https://t.me/scarlettaowner)
--   [@viperzcrew](https://t.me/viperzcrew)
+-   [@viperzcrew](https://t.me/viperzcrew2)
 
 ---
 
 ## ✍️ Author
 
--   **ZeroEthical** - [GitHub](https://github.com/ZeroEthical)
+-   **ZeroEthical** - [GitHub](https://github.com/ZeroEthical) [Telegram](https://t.me/ZeroEthical)
+-   
