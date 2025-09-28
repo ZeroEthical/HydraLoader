@@ -211,4 +211,3 @@ A special thanks to our friends in the Telegram community for providing the base
 ## ✍️ Author
 
 -   **ZeroEthical** - [GitHub](https://github.com/ZeroEthical) [Telegram](https://t.me/ZeroEthical)
--   
