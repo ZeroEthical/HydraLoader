@@ -88,7 +88,7 @@ HydraLoader employs a dual-headed, self-healing persistence mechanism to ensure 
 
 ---
 
-## 🚀 How to Use This Beast 😏
+## 🚀 ¿How to use Hydra?
 
 This guide will walk you through preparing your payload, configuring HydraLoader, and deploying it on a target system.
 
