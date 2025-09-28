@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/ZeroEthical/PowerShell-Loader/blob/main/unnamed.png"  width="200"/>
+  <img src="https://github.com/ZeroEthical/PowerShell-Loader/blob/main/unnamed.png"  width="600"/>
 </p>
 <h1 align="center">
   <br>
