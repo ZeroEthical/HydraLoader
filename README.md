@@ -7,7 +7,7 @@
   <br>
 </h1>
 
-<h4 align="center">An Advanced and Resilient PowerShell Execution Framework for Red Teaming & Adversary Simulation.</h4>
+<h4 align="center">An execution framework built for the modern battlefield, designed to bypass next-gen defenses like AMSI and EDR through deep obfuscation and dynamic behavior.</h4>
 
 <p align="center">
   <a href="https://github.com/ZeroEthical/HydraLoader/blob/main/LICENSE">
@@ -196,6 +196,15 @@ With your payload prepared and HydraLoader configured, you're ready for deployme
 ## ⚠️ Disclaimer
 
 This tool is intended for authorized red teaming, security research, and educational purposes **only**. Unauthorized use of this framework against any system is illegal. The author assumes no liability and is not responsible for any misuse or damage caused by this program.
+
+---
+
+## 🙏 Acknowledgements
+
+A special thanks to our friends in the Telegram community for providing the base code that inspired the creation of this project.
+
+-   [@scarlettaowner](https://t.me/scarlettaowner)
+-   [@viperzcrew](https://t.me/viperzcrew)
 
 ---
 
