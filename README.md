@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://imgur.com/a/hydraloader-5wYGBco" alt="HydraLoader Logo" width="400"/>
+  <img src="https://imgur.com/gallery/hydraloader-5wYGBco#e8FJfgA" alt="HydraLoader Logo" width="400"/>
 </p>
 <h1 align="center">
   <br>
